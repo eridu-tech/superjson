@@ -3,9 +3,9 @@ import { find } from './util.js';
 
 export interface CustomTransfomer<I, O extends JSONValue> {
   name: string;
-  isApplicable: (v: any) => v is I;
-  serialize: (v: I) => O;
-  deserialize: (v: O) => I;
+  isApplicable: (v: any) => boolean | Promise<boolean>;
+  serialize: (v: I) => O | Promise<O>;
+  deserialize: (v: O) => I | Promise<I>;
 }
 
 export class CustomTransformerRegistry {
@@ -15,13 +15,13 @@ export class CustomTransformerRegistry {
     this.transfomers[transformer.name] = transformer;
   }
 
-  findApplicable<T>(v: T) {
-    return find(this.transfomers, transformer =>
+  findApplicable<T>(v: T): Promise<CustomTransfomer<T, JSONValue> | undefined> {
+    return find(this.transfomers, async transformer =>
       transformer.isApplicable(v)
-    ) as CustomTransfomer<T, JSONValue> | undefined;
+    );
   }
 
-  findByName(name: string) {
+  findByName(name: string): CustomTransfomer<any, any> {
     return this.transfomers[name];
   }
 }
