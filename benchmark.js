@@ -81,9 +81,14 @@ const instances = {
 const suite = new Benchmark.Suite('serialize & deserialize');
 
 for (const [key, instance] of Object.entries(instances)) {
-  suite.add(key, () => {
-    SuperJSON.deserialize(SuperJSON.serialize(instance));
-  });
+  suite.add(
+    key,
+    async deferred => {
+      await SuperJSON.deserialize(await SuperJSON.serialize(instance));
+      deferred.resolve();
+    },
+    { defer: true }
+  );
 }
 
 suite.on('cycle', event => {
