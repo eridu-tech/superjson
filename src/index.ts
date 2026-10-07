@@ -30,9 +30,9 @@ export default class SuperJSON {
     this.dedupe = dedupe;
   }
 
-  serialize(object: SuperJSONValue): SuperJSONResult {
+  async serialize(object: SuperJSONValue): Promise<SuperJSONResult> {
     const identities = new Map<any, any[][]>();
-    const output = walker(object, identities, this, this.dedupe);
+    const output = await walker(object, identities, this, this.dedupe);
     const res: SuperJSONResult = {
       json: output.transformedValue,
     };
@@ -60,17 +60,17 @@ export default class SuperJSON {
     return res;
   }
 
-  deserialize<T = unknown>(payload: SuperJSONResult, options?: { inPlace?: boolean }): T {
+  async deserialize<T = unknown>(payload: SuperJSONResult, options?: { inPlace?: boolean }): Promise<T> {
     const { json, meta } = payload;
 
     let result: T = options?.inPlace ? json : copy(json) as any;
 
     if (meta?.values) {
-      result = applyValueAnnotations(result, meta.values, meta.v ?? 0, this);
+      result = await applyValueAnnotations(result, meta.values, meta.v ?? 0, this);
     }
 
     if (meta?.referentialEqualities) {
-      result = applyReferentialEqualityAnnotations(
+      result = await applyReferentialEqualityAnnotations(
         result,
         meta.referentialEqualities,
         meta.v ?? 0
@@ -80,21 +80,21 @@ export default class SuperJSON {
     return result;
   }
 
-  stringify(object: SuperJSONValue): string {
-    return JSON.stringify(this.serialize(object));
+  async stringify(object: SuperJSONValue): Promise<string> {
+    return JSON.stringify(await this.serialize(object));
   }
 
-  parse<T = unknown>(string: string): T {
+  parse<T = unknown>(string: string): Promise<T> {
     return this.deserialize(JSON.parse(string), { inPlace: true });
   }
 
   readonly classRegistry = new ClassRegistry();
-  registerClass(v: Class, options?: RegisterOptions | string) {
+  registerClass(v: Class, options?: RegisterOptions | string): void {
     this.classRegistry.register(v, options);
   }
 
   readonly symbolRegistry = new Registry<Symbol>(s => s.description ?? '');
-  registerSymbol(v: Symbol, identifier?: string) {
+  registerSymbol(v: Symbol, identifier?: string): void {
     this.symbolRegistry.register(v, identifier);
   }
 
@@ -102,7 +102,7 @@ export default class SuperJSON {
   registerCustom<I, O extends JSONValue>(
     transformer: Omit<CustomTransfomer<I, O>, 'name'>,
     name: string
-  ) {
+  ): void {
     this.customTransformerRegistry.register({
       name,
       ...transformer,
@@ -110,7 +110,7 @@ export default class SuperJSON {
   }
 
   readonly allowedErrorProps: string[] = [];
-  allowErrorProps(...props: string[]) {
+  allowErrorProps(...props: string[]): void {
     this.allowedErrorProps.push(...props);
   }
 
