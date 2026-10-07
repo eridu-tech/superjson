@@ -2,7 +2,7 @@ import SuperJSON from './index.js';
 
 import { test, expect } from 'vitest';
 
-test('throws an descriptive error when transforming', () => {
+test('throws an descriptive error when transforming', async () => {
   const instance = new SuperJSON();
   class FunnyNumber {
     constructor(private number: number) {}
@@ -13,16 +13,19 @@ test('throws an descriptive error when transforming', () => {
     }
   }
   instance.registerClass(FunnyNumber);
-  expect(() =>
+
+  const { json } = await instance.serialize({
+    number: new FunnyNumber(2137),
+  });
+
+  await expect(
     instance.deserialize({
-      json: instance.serialize({
-        number: new FunnyNumber(2137),
-      }).json,
+      json,
       meta: {
         values: [['class', 'NotRegistered']],
       },
     })
-  ).toThrowError(
+  ).rejects.toThrowError(
     `Trying to deserialize unknown class 'NotRegistered' - check https://github.com/blitz-js/superjson/issues/116#issuecomment-773996564`
   );
 });

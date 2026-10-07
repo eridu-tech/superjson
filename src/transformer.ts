@@ -11,12 +11,14 @@ import {
   isArray,
   isError,
   isTypedArray,
+  TypedArray,
   TypedArrayConstructor,
   BigIntTypedArrayConstructor,
   isURL,
 } from './is.js';
 import { findArr } from './util.js';
 import SuperJSON from './index.js';
+import { JSONValue } from './types.js';
 
 export type PrimitiveTypeAnnotation = 'number' | 'undefined' | 'bigint';
 
@@ -175,10 +177,10 @@ const simpleRules = [
 ];
 
 function compositeTransformation<I, O, A extends CompositeTypeAnnotation>(
-  isApplicable: (v: any, superJson: SuperJSON) => v is I,
-  annotation: (v: I, superJson: SuperJSON) => A,
-  transform: (v: I, superJson: SuperJSON) => O,
-  untransform: (v: O, a: A, superJson: SuperJSON) => I
+  isApplicable: (v: any, superJson: SuperJSON) => Promise<boolean>,
+  annotation: (v: I, superJson: SuperJSON) => Promise<A>,
+  transform: (v: I, superJson: SuperJSON) => Promise<O>,
+  untransform: (v: O, a: A, superJson: SuperJSON) => Promise<I>
 ) {
   return {
     isApplicable,
@@ -188,20 +190,24 @@ function compositeTransformation<I, O, A extends CompositeTypeAnnotation>(
   };
 }
 
-const symbolRule = compositeTransformation(
-  (s, superJson): s is Symbol => {
+const symbolRule = compositeTransformation<
+  Symbol,
+  string | undefined,
+  ['symbol', string]
+>(
+  async (s, superJson): Promise<boolean> => {
     if (isSymbol(s)) {
       const isRegistered = !!superJson.symbolRegistry.getIdentifier(s);
       return isRegistered;
     }
     return false;
   },
-  (s, superJson) => {
+  async (s, superJson) => {
     const identifier = superJson.symbolRegistry.getIdentifier(s);
     return ['symbol', identifier!];
   },
-  v => v.description,
-  (_, a, superJson) => {
+  async v => v.description,
+  async (_, a, superJson) => {
     const value = superJson.symbolRegistry.getValue(a[1]);
     if (!value) {
       throw new Error('Trying to deserialize unknown symbol');
@@ -235,10 +241,14 @@ if (typeof BigUint64Array !== 'undefined') {
   bigIntConstructorToName[BigUint64Array.name] = BigUint64Array;
 }
 
-const typedArrayRule = compositeTransformation(
-  isTypedArray,
-  v => ['typed-array', v.constructor.name],
-  v =>
+const typedArrayRule = compositeTransformation<
+  TypedArray,
+  (string | number)[],
+  ['typed-array', string]
+>(
+  async a => isTypedArray(a),
+  async v => ['typed-array', v.constructor.name],
+  async v =>
     [...v].map(n => {
       // bigint values (from BigInt64Array / BigUint64Array) are not valid JSON,
       // so they're stored as strings.
@@ -253,7 +263,7 @@ const typedArrayRule = compositeTransformation(
       }
       return n;
     }),
-  (v, a) => {
+  async (v, a) => {
     const bigIntCtor = bigIntConstructorToName[a[1]];
     if (bigIntCtor) {
       const values = v.map((n: string | number | bigint): bigint => BigInt(n));
@@ -291,13 +301,13 @@ export function isInstanceOfRegisteredClass(
   return false;
 }
 
-const classRule = compositeTransformation(
-  isInstanceOfRegisteredClass,
-  (clazz, superJson) => {
+const classRule = compositeTransformation<any, any, ['class', string]>(
+  async (value, superJson) => isInstanceOfRegisteredClass(value, superJson),
+  async (clazz, superJson) => {
     const identifier = superJson.classRegistry.getIdentifier(clazz.constructor);
     return ['class', identifier!];
   },
-  (clazz, superJson) => {
+  async (clazz, superJson) => {
     const allowedProps = superJson.classRegistry.getAllowedProps(
       clazz.constructor
     );
@@ -311,7 +321,7 @@ const classRule = compositeTransformation(
     });
     return result;
   },
-  (v, a, superJson) => {
+  async (v, a, superJson) => {
     const clazz = superJson.classRegistry.getValue(a[1]);
 
     if (!clazz) {
@@ -324,23 +334,27 @@ const classRule = compositeTransformation(
   }
 );
 
-const customRule = compositeTransformation(
-  (value, superJson): value is any => {
-    return !!superJson.customTransformerRegistry.findApplicable(value);
+const customRule = compositeTransformation<
+  any,
+  JSONValue | Promise<JSONValue>,
+  ['custom', any]
+>(
+  async (value, superJson): Promise<boolean> => {
+    return !!(await superJson.customTransformerRegistry.findApplicable(value));
   },
-  (value, superJson) => {
-    const transformer = superJson.customTransformerRegistry.findApplicable(
+  async (value, superJson) => {
+    const transformer = (await superJson.customTransformerRegistry.findApplicable(
       value
-    )!;
+    ))!;
     return ['custom', transformer.name];
   },
-  (value, superJson) => {
-    const transformer = superJson.customTransformerRegistry.findApplicable(
+  async (value, superJson) => {
+    const transformer = (await superJson.customTransformerRegistry.findApplicable(
       value
-    )!;
+    ))!;
     return transformer.serialize(value);
   },
-  (v, a, superJson) => {
+  async (v, a, superJson) => {
     const transformer = superJson.customTransformerRegistry.findByName(a[1]);
     if (!transformer) {
       throw new Error('Trying to deserialize unknown custom value');
@@ -351,21 +365,21 @@ const customRule = compositeTransformation(
 
 const compositeRules = [classRule, symbolRule, customRule, typedArrayRule];
 
-export const transformValue = (
+export const transformValue = async (
   value: any,
   superJson: SuperJSON
-): { value: any; type: TypeAnnotation } | undefined => {
-  const applicableCompositeRule = findArr(compositeRules, rule =>
-    rule.isApplicable(value, superJson)
+): Promise<{ value: any; type: TypeAnnotation } | undefined> => {
+  const applicableCompositeRule = await findArr(compositeRules, async rule =>
+    await rule.isApplicable(value, superJson)
   );
   if (applicableCompositeRule) {
     return {
-      value: applicableCompositeRule.transform(value as never, superJson),
-      type: applicableCompositeRule.annotation(value, superJson),
+      value: await applicableCompositeRule.transform(value as never, superJson),
+      type: await applicableCompositeRule.annotation(value, superJson),
     };
   }
 
-  const applicableSimpleRule = findArr(simpleRules, rule =>
+  const applicableSimpleRule = await findArr(simpleRules, async rule =>
     rule.isApplicable(value, superJson)
   );
 
@@ -384,7 +398,7 @@ simpleRules.forEach(rule => {
   simpleRulesByAnnotation[rule.annotation] = rule;
 });
 
-export const untransformValue = (
+export const untransformValue = async (
   json: any,
   type: TypeAnnotation,
   superJson: SuperJSON

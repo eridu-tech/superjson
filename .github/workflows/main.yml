@@ -27,15 +27,6 @@ jobs:
         run: npm run build
 
       - name: Run benchmark
-        run: node benchmark.js | tee output.txt
+        run: node benchmark.js
         env:
           NODE_ENV: production
-
-      - name: Store benchmark result
-        uses: rhysd/github-action-benchmark@v1
-        with:
-          tool: 'benchmarkjs'
-          output-file-path: output.txt
-          comment-on-alert: true
-          save-data-file: ${{ github.ref == 'refs/heads/main' }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}

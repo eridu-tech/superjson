@@ -3,9 +3,9 @@ import { walker } from './plainer.js';
 
 import { test, expect } from 'vitest';
 
-test('walker', () => {
+test('walker', async () => {
   expect(
-    walker(
+    await walker(
       {
         a: new Map([[NaN, null]]),
         b: /test/g,
