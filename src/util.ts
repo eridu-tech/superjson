@@ -16,21 +16,16 @@ function valuesOfObj<T>(record: Record<string, T>): T[] {
   return values;
 }
 
-export function find<T>(
+export async function find<T>(
   record: Record<string, T>,
-  predicate: (v: T) => boolean
-): T | undefined {
+  predicate: (v: T) => Promise<boolean>
+): Promise<T | undefined> {
   const values = valuesOfObj(record);
-  if ('find' in values) {
-    // eslint-disable-next-line es5/no-es6-methods
-    return values.find(predicate);
-  }
-
   const valuesNotNever = values as T[];
 
   for (let i = 0; i < valuesNotNever.length; i++) {
     const value = valuesNotNever[i];
-    if (predicate(value)) {
+    if (await predicate(value)) {
       return value;
     }
   }
@@ -38,24 +33,26 @@ export function find<T>(
   return undefined;
 }
 
-export function forEach<T>(
+export async function forEach<T>(
   record: Record<string, T>,
-  run: (v: T, key: string) => void
-) {
-  Object.entries(record).forEach(([key, value]) => run(value, key));
+  run: (v: T, key: string) => Promise<void>
+): Promise<void> {
+  for (const [key, value] of Object.entries(record)) {
+    await run(value, key)
+  }
 }
 
 export function includes<T>(arr: T[], value: T) {
   return arr.indexOf(value) !== -1;
 }
 
-export function findArr<T>(
+export async function findArr<T>(
   record: T[],
-  predicate: (v: T) => boolean
-): T | undefined {
+  predicate: (v: T) => Promise<boolean>
+): Promise<T | undefined> {
   for (let i = 0; i < record.length; i++) {
     const value = record[i];
-    if (predicate(value)) {
+    if (await predicate(value)) {
       return value;
     }
   }
