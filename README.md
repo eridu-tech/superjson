@@ -42,7 +42,6 @@
 - 🔐 Type safety with autocompletion
 - 🐾 Negligible runtime footprint
 - 💫 Framework agnostic
-- 🛠 Perfect fix for Next.js's serialisation limitations in `getServerSideProps` and `getInitialProps`
 
 ## Backstory
 
@@ -146,59 +145,6 @@ meta = {
 };
 */
 ```
-
-## Using with Next.js
-
-The `getServerSideProps`, `getInitialProps`, and `getStaticProps` data hooks provided by Next.js do not allow you to transmit Javascript objects like Dates. It will error unless you convert Dates to strings, etc.
-
-Thankfully, Superjson is a perfect tool to bypass that limitation!
-
-### Next.js SWC Plugin (experimental, v13 or above)
-
-Next.js SWC plugins are [experimental](https://nextjs.org/docs/advanced-features/compiler#swc-plugins-experimental), but promise a significant speedup.
-To use the [SuperJSON SWC plugin](https://github.com/blitz-js/next-superjson-plugin), install it and add it to your `next.config.js`:
-
-```sh
-yarn add next-superjson-plugin
-```
-
-```js
-// next.config.js
-module.exports = {
-  experimental: {
-    swcPlugins: [
-      [
-        'next-superjson-plugin',
-        {
-          excluded: [],
-        },
-      ],
-    ],
-  },
-};
-```
-
-### Next.js (stable Babel transform)
-
-Install the library with your package manager of choice, e.g.:
-
-```sh
-yarn add babel-plugin-superjson-next
-```
-
-Add the plugin to your .babelrc. If you don't have one, create it.
-
-```js
-{
-  "presets": ["next/babel"],
-  "plugins": [
-    ...
-    "superjson-next" // 👈
-  ]
-}
-```
-
-Done! Now you can safely use all JS datatypes in your `getServerSideProps` / etc. .
 
 ## API
 
