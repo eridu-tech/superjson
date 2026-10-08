@@ -63,7 +63,7 @@ Superjson logo by [NUMI](https://github.com/numi-hq/open-design):
 Install the library with your package manager of choice, e.g.:
 
 ```
-yarn add superjson
+yarn add @eridu-tech/superjson
 ```
 
 ## Async API
@@ -79,7 +79,7 @@ Unlike upstream [superjson](https://github.com/blitz-js/superjson), the public A
 | `parse(string)`                  | `Promise<T>`               |
 
 ```ts
-import superjson from 'superjson';
+import superjson from '@eridu-tech/superjson';
 
 const json = await superjson.stringify({ date: new Date(0) });
 const value = await superjson.parse<{ date: Date }>(json);
@@ -96,7 +96,7 @@ The easiest way to use Superjson is with its `stringify` and `parse` functions. 
 Easily stringify any expression you’d like:
 
 ```js
-import superjson from 'superjson';
+import superjson from '@eridu-tech/superjson';
 
 const jsonString = await superjson.stringify({ date: new Date(0) });
 
