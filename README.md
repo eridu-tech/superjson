@@ -28,6 +28,14 @@
   </a>
 </p>
 
+> [!IMPORTANT]
+> **This is a fork of [superjson](https://github.com/blitz-js/superjson).** It is maintained in
+> [eridu-tech/superjson](https://github.com/eridu-tech/superjson) and published to npm as
+> `@eridu-tech/superjson`.
+>
+> **In this fork the API is asynchronous:** `stringify`, `parse`, `serialize` and `deserialize` return
+> Promises and must be `await`ed. See [Async API](#async-api).
+
 ## Key features
 
 - 🍱 Reliable serialization and deserialization
@@ -58,6 +66,29 @@ Install the library with your package manager of choice, e.g.:
 yarn add superjson
 ```
 
+## Async API
+
+Unlike upstream [superjson](https://github.com/blitz-js/superjson), the public API in this fork is
+**asynchronous**. `stringify`, `parse`, `serialize` and `deserialize` all return Promises:
+
+| Method                           | Returns                    |
+| -------------------------------- | -------------------------- |
+| `serialize(value)`               | `Promise<SuperJSONResult>` |
+| `deserialize(payload, options?)` | `Promise<T>`               |
+| `stringify(value)`               | `Promise<string>`          |
+| `parse(string)`                  | `Promise<T>`               |
+
+```ts
+import superjson from 'superjson';
+
+const json = await superjson.stringify({ date: new Date(0) });
+const value = await superjson.parse<{ date: Date }>(json);
+```
+
+The registration methods (`registerClass`, `registerSymbol`, `registerCustom`, `allowErrorProps`) remain
+synchronous. Custom transformers may be asynchronous too: `isApplicable`, `serialize` and `deserialize`
+can return either a value or a Promise.
+
 ## Basic Usage
 
 The easiest way to use Superjson is with its `stringify` and `parse` functions. If you know how to use `JSON.stringify`, you already know Superjson!
@@ -67,7 +98,7 @@ Easily stringify any expression you’d like:
 ```js
 import superjson from 'superjson';
 
-const jsonString = superjson.stringify({ date: new Date(0) });
+const jsonString = await superjson.stringify({ date: new Date(0) });
 
 // jsonString === '{"json":{"date":"1970-01-01T00:00:00.000Z"},"meta":{"values":{date:"Date"}}}'
 ```
@@ -75,7 +106,7 @@ const jsonString = superjson.stringify({ date: new Date(0) });
 And parse your JSON like so:
 
 ```js
-const object = superjson.parse<
+const object = await superjson.parse<
 { date: Date }
 >(jsonString);
 
@@ -97,7 +128,7 @@ const object = {
   test: /superjson/,
 };
 
-const { json, meta } = superjson.serialize(object);
+const { json, meta } = await superjson.serialize(object);
 
 /*
 json = {
@@ -171,6 +202,8 @@ Done! Now you can safely use all JS datatypes in your `getServerSideProps` / etc
 
 ## API
 
+> All of the methods below are **asynchronous** and return Promises. See [Async API](#async-api).
+
 ### serialize
 
 Serializes any JavaScript value into a JSON-compatible object.
@@ -184,7 +217,7 @@ const object = {
   test: /superjson/,
 };
 
-const { json, meta } = serialize(object);
+const { json, meta } = await serialize(object);
 ```
 
 Returns **`json` and `meta`, both JSON-compatible values.**
@@ -196,9 +229,9 @@ Deserializes the output of Superjson back into your original value.
 #### Examples
 
 ```js
-const { json, meta } = serialize(object);
+const { json, meta } = await serialize(object);
 
-deserialize({ json, meta }, { inPlace: true });
+await deserialize({ json, meta }, { inPlace: true });
 ```
 
 Options
@@ -223,7 +256,7 @@ const object = {
   test: /superjson/,
 };
 
-const jsonString = stringify(object);
+const jsonString = await stringify(object);
 ```
 
 Returns **`string`**.
@@ -235,9 +268,9 @@ Parses and then deserializes the JSON string returned by `stringify`.
 #### Examples
 
 ```js
-const jsonString = stringify(object);
+const jsonString = await stringify(object);
 
-parse(jsonString);
+await parse(jsonString);
 ```
 
 Returns **`your original value`**.
